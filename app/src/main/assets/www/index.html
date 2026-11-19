@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>کتابخون</title>
+<script src="pdf.min.js"></script>
+<style>
+:root{
+  --bg:#f3f5fa; --card:#ffffff; --ink:#161b33; --muted:#667091; --line:#dfe4f0;
+  --brand:#1b2548; --accent:#0e8aa8; --accent-ink:#ffffff; --soft:#e6f4f8;
+  --hl:#fff0b8; --hl-ink:#3b2d00; --danger:#b42318;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f1226; --card:#1a1f3d; --ink:#eceffa; --muted:#98a1c4; --line:#2a3160;
+    --accent:#38bdf8; --accent-ink:#06223a; --soft:#16304a;
+    --hl:#4a3c10; --hl-ink:#ffe9a3; --danger:#ff8a7a;
+    color-scheme: dark;
+  }
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{height:100%; margin:0}
+body{
+  background:var(--bg); color:var(--ink); overflow:hidden; line-height:1.8;
+  font-family:"Vazirmatn","Noto Naskh Arabic","Noto Sans Arabic",Tahoma,sans-serif; font-size:16px;
+}
+.view{position:fixed; inset:0; display:none; flex-direction:column}
+.view.on{display:flex}
+.top{background:var(--brand); color:#fff; padding:10px 8px 10px 16px; display:flex; align-items:center; gap:6px; flex:none; min-height:60px}
+.top h1{margin:0; font-size:1.3rem; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.top .sub{font-size:.8rem; opacity:.75; margin:0}
+.iconbtn{background:transparent; border:0; color:inherit; width:46px; height:46px; border-radius:50%; display:grid; place-items:center; cursor:pointer; flex:none}
+.iconbtn:active{background:rgba(255,255,255,.16)}
+svg.i{width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+button{font:inherit}
+.note{font-size:.82rem; color:var(--muted); margin:0; padding:0 16px}
+.note.err{color:var(--danger)}
+
+/* ---- library ---- */
+#grid{flex:1; overflow:auto; padding:16px 16px 110px; display:grid; grid-template-columns:repeat(2,1fr); gap:14px; align-content:start}
+.book{background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; position:relative; cursor:pointer}
+.book:active{transform:scale(.985)}
+.cover{width:100%; aspect-ratio:3/4; object-fit:cover; display:block; background:var(--soft)}
+.coverph{width:100%; aspect-ratio:3/4; display:grid; place-items:center; background:linear-gradient(160deg,var(--brand),#2d3f80); color:#fff; padding:12px; text-align:center; font-weight:700}
+.meta{padding:10px 12px 12px}
+.bt{font-weight:700; font-size:.95rem; line-height:1.6; height:3.2em; overflow:hidden}
+.bar{height:5px; background:var(--line); border-radius:3px; margin-top:6px; overflow:hidden}
+.bar i{display:block; height:100%; background:var(--accent)}
+.pct{font-size:.78rem; color:var(--muted); margin-top:4px}
+.del{position:absolute; top:8px; left:8px; width:34px; height:34px; border-radius:50%; border:0; background:rgba(0,0,0,.55); color:#fff; display:grid; place-items:center}
+.del svg.i{width:18px; height:18px}
+#empty{flex:1; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px; gap:10px}
+#empty .big{width:96px; height:96px; border-radius:24px; background:var(--soft); display:grid; place-items:center; color:var(--accent)}
+#empty .big svg.i{width:52px; height:52px; stroke-width:1.6}
+#empty h2{margin:6px 0 0; font-size:1.2rem}
+#empty p{margin:0; color:var(--muted); max-width:22em}
+.fab{
+  position:fixed; bottom:calc(18px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+  background:var(--accent); color:var(--accent-ink); border:0; border-radius:28px; padding:14px 26px;
+  font-weight:700; font-size:1rem; display:flex; gap:8px; align-items:center; box-shadow:0 6px 20px rgba(0,0,0,.28)
+}
+
+/* ---- reader ---- */
+#textWrap{flex:1; overflow:auto; padding:18px 18px 24px}
+#pageText{line-height:2.3; font-size:1.3rem; text-align:justify}
+.s{padding:2px 3px; border-radius:7px; cursor:pointer}
+.s.on{background:var(--hl); color:var(--hl-ink)}
+.dock{flex:none; background:var(--card); border-top:1px solid var(--line); padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
+.seekrow{display:flex; align-items:center; gap:10px; font-size:.82rem; color:var(--muted)}
+.seekrow input{flex:1; accent-color:var(--accent)}
+.ctrls{display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding:0 4px}
+.cb{background:transparent; border:0; color:var(--ink); width:52px; height:52px; border-radius:50%; display:grid; place-items:center}
+.cb:active{background:var(--soft)}
+.cb svg.i{width:28px; height:28px}
+.play{width:70px; height:70px; background:var(--accent); color:var(--accent-ink)}
+.play:active{background:var(--accent)}
+.play svg.i{width:34px; height:34px; fill:currentColor; stroke:none}
+.play .pause{display:none}
+.play.on .pause{display:block}
+.play.on .go{display:none}
+.play.wait{opacity:.7}
+#rHint{min-height:1.5em; text-align:center; padding:0}
+
+/* ---- sheets ---- */
+.overlay{position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; z-index:20}
+.overlay.on{display:block}
+.panel{position:absolute; bottom:0; left:0; right:0; background:var(--card); border-radius:22px 22px 0 0; padding:18px 18px calc(22px + env(safe-area-inset-bottom)); max-height:88%; overflow:auto}
+.panel h2{margin:0 0 6px; font-size:1.1rem}
+label.f{display:block; font-size:.88rem; color:var(--muted); margin:14px 0 6px}
+select,input[type=number]{
+  width:100%; font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:10px 12px
+}
+input[type=range]{width:100%; accent-color:var(--accent)}
+.row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.row > *{flex:1}
+.btn{border:1px solid var(--line); background:var(--bg); color:var(--ink); border-radius:12px; padding:12px 16px; font-weight:600}
+.btn.main{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.btn.danger{background:var(--danger); color:#fff; border-color:var(--danger)}
+.btn:disabled{opacity:.45}
+audio{width:100%; margin-top:12px}
+.hint{font-size:.82rem; color:var(--muted); margin:10px 0 0}
+
+/* ---- busy + toast ---- */
+#busy{position:fixed; inset:0; background:rgba(10,13,32,.72); display:none; align-items:center; justify-content:center; z-index:40; padding:30px}
+#busy.on{display:flex}
+#busy .box{background:var(--card); border-radius:18px; padding:22px; width:100%; max-width:340px; text-align:center}
+#busy .bar{height:8px; margin-top:12px}
+#toast{position:fixed; bottom:calc(96px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:#222; color:#fff; padding:10px 18px; border-radius:20px; font-size:.9rem; z-index:50; display:none; max-width:90%; text-align:center}
+#toast.on{display:block}
+
+/* ---- theme override ---- */
+:root[data-theme="light"]{
+  --bg:#f3f5fa; --card:#ffffff; --ink:#161b33; --muted:#667091; --line:#dfe4f0;
+  --accent:#0e8aa8; --accent-ink:#ffffff; --soft:#e6f4f8; --hl:#fff0b8; --hl-ink:#3b2d00; --danger:#b42318;
+  color-scheme: light;
+}
+:root[data-theme="dark"]{
+  --bg:#0f1226; --card:#1a1f3d; --ink:#eceffa; --muted:#98a1c4; --line:#2a3160;
+  --accent:#38bdf8; --accent-ink:#06223a; --soft:#16304a; --hl:#4a3c10; --hl-ink:#ffe9a3; --danger:#ff8a7a;
+  color-scheme: dark;
+}
+/* ---- tabs ---- */
+#tabs{position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--line); display:flex; padding-bottom:env(safe-area-inset-bottom); z-index:10}
+body.reading #tabs{display:none}
+.tab{flex:1; border:0; background:transparent; color:var(--muted); padding:9px 4px 7px; display:flex; flex-direction:column; align-items:center; font-size:.76rem; gap:2px}
+.tab svg.i{width:24px; height:24px}
+.tab.on{color:var(--accent); font-weight:700}
+.fab{bottom:calc(76px + env(safe-area-inset-bottom))}
+.scroller{flex:1; overflow:auto; padding:16px 16px 100px}
+/* ---- dashboard ---- */
+.stats{display:grid; grid-template-columns:repeat(2,1fr); gap:12px}
+.stat{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px}
+.stat b{display:block; font-size:1.7rem; line-height:1.3}
+.stat span{color:var(--muted); font-size:.82rem}
+.card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-top:12px}
+.card h3{margin:0 0 10px; font-size:1rem}
+.chart{display:flex; align-items:flex-end; justify-content:space-between; gap:8px; height:120px}
+.chart .col{flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end}
+.chart .col i{display:block; width:100%; max-width:26px; background:var(--accent); border-radius:6px 6px 2px 2px; min-height:4px}
+.chart .col em{font-style:normal; font-size:.68rem; color:var(--muted)}
+.cont{display:flex; gap:12px; align-items:center}
+.cont img,.cont .coverph{width:64px; flex:none; border-radius:8px; object-fit:cover; font-size:.6rem; padding:4px}
+.cont .grow{flex:1; min-width:0}
+.cont .bt{height:auto; max-height:3.2em}
+/* ---- more ---- */
+.rowbtn{width:100%; display:flex; align-items:center; justify-content:space-between; background:var(--card); border:1px solid var(--line); color:var(--ink); border-radius:14px; padding:16px; margin-bottom:10px; font-weight:600; text-align:start}
+.rowbtn svg.i{width:20px; height:20px; color:var(--muted)}
+.stars{display:flex; gap:6px; margin:8px 0}
+.star{border:0; background:transparent; font-size:2.1rem; color:var(--line); padding:0 2px; line-height:1}
+.star.on{color:#f5b301}
+textarea,input[type=text]{width:100%; font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:10px 12px}
+textarea{min-height:110px; resize:vertical}
+.sugg{border-top:1px solid var(--line); padding:12px 0}
+.sugg b{display:block}
+.sugg small{color:var(--muted)}
+.sugg p{margin:4px 0 8px; font-size:.9rem}
+.sugg .btn{padding:8px 14px; font-size:.88rem}
+.logo{width:88px; height:88px; border-radius:22px; background:#1b2548; display:grid; place-items:center; margin:4px auto 8px}
+.logo svg{width:72px; height:72px}
+.aboutT{text-align:center}
+.aboutT h2{margin:4px 0}
+.licenses{font-size:.8rem; color:var(--muted); margin-top:14px}
+</style>
+</head>
+<body>
+
+<!-- ============ Library ============ -->
+<div id="libView" class="view on">
+  <div class="top">
+    <div style="flex:1">
+      <h1>کتابخانهٔ من</h1>
+      <p class="sub" id="libCount"></p>
+    </div>
+  </div>
+  <p class="note warmNote" style="padding-top:8px"></p>
+  <div id="grid"></div>
+  <div id="empty">
+    <div class="big">
+      <svg class="i" viewBox="0 0 24 24"><path d="M4 5.5C6.5 4.5 9.5 4.5 12 6c2.5-1.5 5.5-1.5 8-.5V19c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5z"/><path d="M12 6v13.5"/></svg>
+    </div>
+    <h2>هنوز کتابی ندارید</h2>
+    <p>یک فایل PDF از حافظهٔ گوشی یا Google Drive انتخاب کنید تا کتابتان را بخواند.</p>
+  </div>
+  <button class="fab" id="addBtn">
+    <svg class="i" viewBox="0 0 24 24" style="stroke-width:2.6"><path d="M12 5v14M5 12h14"/></svg>
+    افزودن کتاب
+  </button>
+  <input type="file" id="file" accept="application/pdf" hidden>
+</div>
+
+<!-- ============ Profile / dashboard ============ -->
+<div id="meView" class="view">
+  <div class="top"><h1>پروفایل من</h1></div>
+  <div class="scroller">
+    <div class="stats">
+      <div class="stat"><b id="stBooks">۰</b><span>کتاب در کتابخانه</span></div>
+      <div class="stat"><b id="stTotal">۰</b><span>دقیقه گوش‌دادن (کل)</span></div>
+      <div class="stat"><b id="stToday">۰</b><span>دقیقه امروز</span></div>
+      <div class="stat"><b id="stStreak">۰</b><span>روز پیاپی</span></div>
+    </div>
+    <div class="card" id="contCard" style="display:none">
+      <h3>ادامهٔ مطالعه</h3>
+      <div class="cont">
+        <div id="contCover"></div>
+        <div class="grow">
+          <div class="bt" id="contTitle"></div>
+          <div class="bar"><i id="contBar" style="width:0%"></i></div>
+          <div class="pct" id="contPct"></div>
+        </div>
+      </div>
+      <button class="btn main" id="contGo" style="width:100%; margin-top:12px">ادامه بده</button>
+    </div>
+    <div class="card">
+      <h3>گوش‌دادن در هفتهٔ اخیر (دقیقه)</h3>
+      <div class="chart" id="chart"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ More ============ -->
+<div id="moreView" class="view">
+  <div class="top"><h1>بیشتر</h1></div>
+  <div class="scroller">
+    <button class="rowbtn" id="mSet">تنظیمات <svg class="i" viewBox="0 0 24 24"><polyline points="15 6 9 12 15 18"/></svg></button>
+    <button class="rowbtn" id="mFind">جستجوی مقاله و معرفی کتاب <svg class="i" viewBox="0 0 24 24"><polyline points="15 6 9 12 15 18"/></svg></button>
+    <button class="rowbtn" id="mFeed">ارسال نظر و امتیاز <svg class="i" viewBox="0 0 24 24"><polyline points="15 6 9 12 15 18"/></svg></button>
+    <button class="rowbtn" id="mShare">اشتراک‌گذاری برنامه <svg class="i" viewBox="0 0 24 24"><polyline points="15 6 9 12 15 18"/></svg></button>
+    <button class="rowbtn" id="mAbout">دربارهٔ ما <svg class="i" viewBox="0 0 24 24"><polyline points="15 6 9 12 15 18"/></svg></button>
+  </div>
+</div>
+
+<!-- ============ Reader ============ -->
+<div id="readView" class="view">
+  <div class="top">
+    <button class="iconbtn" id="backBtn" aria-label="بازگشت"><svg class="i" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg></button>
+    <h1 id="rTitle"></h1>
+    <button class="iconbtn" id="setBtn" aria-label="تنظیمات"><svg class="i" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2.2" fill="var(--brand)"/><circle cx="15" cy="17" r="2.2" fill="var(--brand)"/></svg></button>
+  </div>
+  <div id="textWrap"><div id="pageText"></div></div>
+  <div class="dock">
+    <div class="seekrow">
+      <span id="pg"></span>
+      <input type="range" id="seek" min="0" max="0" value="0" aria-label="موقعیت در کتاب">
+    </div>
+    <div class="ctrls">
+      <button class="cb" id="pPrev" aria-label="صفحهٔ قبل"><svg class="i" viewBox="0 0 24 24"><polyline points="7 6 13 12 7 18"/><polyline points="13 6 19 12 13 18"/></svg></button>
+      <button class="cb" id="sPrev" aria-label="جملهٔ قبل"><svg class="i" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg></button>
+      <button class="cb play" id="play" aria-label="پخش یا توقف">
+        <svg class="i go" viewBox="0 0 24 24"><polygon points="7 4 20 12 7 20"/></svg>
+        <svg class="i pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4.5" height="16" rx="1"/><rect x="13.5" y="4" width="4.5" height="16" rx="1"/></svg>
+      </button>
+      <button class="cb" id="sNext" aria-label="جملهٔ بعد"><svg class="i" viewBox="0 0 24 24"><polyline points="15 6 9 12 15 18"/></svg></button>
+      <button class="cb" id="pNext" aria-label="صفحهٔ بعد"><svg class="i" viewBox="0 0 24 24"><polyline points="17 6 11 12 17 18"/><polyline points="11 6 5 12 11 18"/></svg></button>
+    </div>
+    <p class="note" id="rHint"></p>
+  </div>
+</div>
+
+<!-- ============ Sheets ============ -->
+<nav id="tabs">
+  <button class="tab on" data-v="lib"><svg class="i" viewBox="0 0 24 24"><path d="M4 5.5C6.5 4.5 9.5 4.5 12 6c2.5-1.5 5.5-1.5 8-.5V19c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5z"/><path d="M12 6v13.5"/></svg>کتابخانه</button>
+  <button class="tab" data-v="me"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1-4 4-6 8-6s7 2 8 6"/></svg>پروفایل</button>
+  <button class="tab" data-v="more"><svg class="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>بیشتر</button>
+</nav>
+
+<div class="overlay" id="sheetSet">
+  <div class="panel">
+    <h2>تنظیمات</h2>
+    <label class="f" for="voice">صدای خواننده</label>
+    <select id="voice">
+      <option value="amir">امیر (صدای مرد)</option>
+      <option value="ganji_adabi">گنجی ادبی (صدای مرد)</option>
+    </select>
+    <label class="f" for="rate">سرعت خواندن: <b id="rateVal">0.9</b></label>
+    <input type="range" id="rate" min="0.6" max="1.3" step="0.1" value="0.9">
+    <label class="f" for="fs">اندازهٔ متن</label>
+    <input type="range" id="fs" min="1" max="2" step="0.1" value="1.3">
+    <label class="f" for="theme">ظاهر برنامه</label>
+    <select id="theme"><option value="auto">مطابق گوشی</option><option value="light">روشن</option><option value="dark">تیره</option></select>
+    <div class="row" style="margin-top:18px">
+      <button class="btn main" id="openBuild">ساخت فایل صوتی</button>
+      <button class="btn" id="closeSet">بستن</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="sheetBuild">
+  <div class="panel">
+    <h2>ساخت فایل صوتی</h2>
+    <div class="row">
+      <div><label class="f" for="pFrom">از صفحه</label><input type="number" id="pFrom" min="1" value="1"></div>
+      <div><label class="f" for="pTo">تا صفحه</label><input type="number" id="pTo" min="1" value="1"></div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn main" id="build">ساخت فایل</button>
+      <button class="btn" id="cancelBuild" disabled>توقف</button>
+    </div>
+    <p class="note" id="buildNote" style="padding:10px 0 0"></p>
+    <audio id="player" controls hidden></audio>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="save" disabled>ذخیره در Download</button>
+      <button class="btn" id="share" disabled>اشتراک‌گذاری</button>
+    </div>
+    <p class="hint">فایل با فرمت WAV ساخته می‌شود و حجمش زیاد است (حدود ۲٫۶ مگابایت برای هر دقیقه). بهتر است هر بار چند صفحه بسازید.</p>
+    <div class="row" style="margin-top:14px"><button class="btn" id="closeBuild">بستن</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="sheetDel">
+  <div class="panel">
+    <h2 id="delTitle">حذف کتاب</h2>
+    <p class="note" style="padding:0">این کتاب و جای مطالعه‌اش از کتابخانه حذف می‌شود. فایل PDF اصلی روی گوشی دست‌نخورده می‌ماند.</p>
+    <div class="row" style="margin-top:16px">
+      <button class="btn danger" id="delOk">حذف</button>
+      <button class="btn" id="delNo">انصراف</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="sheetFind">
+  <div class="panel">
+    <h2>جستجوی مقاله و معرفی کتاب</h2>
+    <p class="note" style="padding:0">نتیجه در مرورگر و در Google باز می‌شود (اینترنت لازم است).</p>
+    <div class="row" style="margin-top:10px">
+      <input type="text" id="q" placeholder="نام کتاب، موضوع یا نویسنده">
+      <button class="btn main" id="qGo" style="flex:none">جستجو</button>
+    </div>
+    <h2 style="margin-top:20px">کتاب‌های پیشنهادی</h2>
+    <div id="sugg"></div>
+    <div class="row" style="margin-top:12px"><button class="btn" id="closeFind">بستن</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="sheetFeed">
+  <div class="panel">
+    <h2>نظر شما برای ما مهم است</h2>
+    <div class="stars" id="stars"></div>
+    <textarea id="fbText" placeholder="چه چیزی را دوست داشتید؟ چه چیزی باید بهتر شود؟"></textarea>
+    <div class="row" style="margin-top:14px">
+      <button class="btn main" id="fbSend">ارسال با ایمیل</button>
+      <button class="btn" id="fbRate">امتیاز در بازار</button>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="btn" id="closeFeed">بستن</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="sheetAbout">
+  <div class="panel">
+    <div class="aboutT">
+      <div class="logo"><svg viewBox="0 0 108 108"><g transform="translate(0,6)"><path d="M46,33 Q54,26 62,33" fill="none" stroke="#38BDF8" stroke-width="3.2" stroke-linecap="round"/><path d="M39,33 Q54,18 69,33" fill="none" stroke="#38BDF8" stroke-opacity=".8" stroke-width="3.2" stroke-linecap="round"/><path d="M32,33 Q54,10 76,33" fill="none" stroke="#38BDF8" stroke-opacity=".55" stroke-width="3.2" stroke-linecap="round"/><path d="M54,43 C47,38 39,37 31,38.5 L31,71 C39,69.5 47,70.5 54,75.5 Z" fill="#fff"/><path d="M54,43 C61,38 69,37 77,38.5 L77,71 C69,69.5 61,70.5 54,75.5 Z" fill="#D6EEF6"/><path d="M54,43 L54,75.5" stroke="#1B2548" stroke-width="1.6"/></g></svg></div>
+      <h2 id="abName"></h2>
+      <div class="note" id="abVer" style="padding:0"></div>
+    </div>
+    <p id="abText" style="margin:14px 0 6px"></p>
+    <p class="note" id="abDev" style="padding:0"></p>
+    <p class="note" id="abMail" style="padding:0"></p>
+    <div class="licenses">
+      <b>مجوزها و سپاس:</b> موتور صدا sherpa-onnx (Apache-2.0)، کتابخانهٔ pdf.js (Apache-2.0) و صداهای فارسی بر پایهٔ پروژهٔ Piper و دادگان DataCula.
+    </div>
+    <div class="row" style="margin-top:14px"><button class="btn" id="closeAbout">بستن</button></div>
+  </div>
+</div>
+
+<div id="busy"><div class="box"><div id="busyMsg">لطفاً صبر کنید…</div><div class="bar"><i id="busyBar" style="width:0%"></i></div></div></div>
+<div id="toast"></div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "pdf.worker.min.js";
+
+const $ = id => document.getElementById(id);
+const fa = n => Number(n).toLocaleString("fa");
+const A = window.Android;
+
+/* ---------- small helpers ---------- */
+let toastTimer = null;
+function toast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 3200);
+}
+function showBusy(msg, frac){
+  $("busy").classList.add("on"); $("busyMsg").textContent = msg;
+  $("busyBar").style.width = Math.round((frac || 0) * 100) + "%";
+}
+function hideBusy(){ $("busy").classList.remove("on"); }
+
+let view = "lib";
+function go(v){
+  view = v;
+  ["lib","me","more","read"].forEach(n => $(n + "View").classList.toggle("on", n === v));
+  document.body.classList.toggle("reading", v === "read");
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.v === v));
+  if(v === "me") renderMe();
+}
+function openSheet(id){ $(id).classList.add("on"); }
+function closeSheets(){ document.querySelectorAll(".overlay").forEach(o => o.classList.remove("on")); }
+function sheetOpen(){ return !!document.querySelector(".overlay.on"); }
+document.querySelectorAll(".overlay").forEach(o => o.addEventListener("click", e => { if(e.target === o) o.classList.remove("on"); }));
+
+/* ---------- settings (remembered) ---------- */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem("kk_" + k); return v === null ? d : v; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem("kk_" + k, v); }catch(e){} }
+};
+$("voice").value = store.get("voice", "amir");
+$("rate").value = store.get("rate", "0.9"); $("rateVal").textContent = $("rate").value;
+$("fs").value = store.get("fs", "1.3");
+function applyFs(){ $("pageText").style.fontSize = $("fs").value + "rem"; }
+applyFs();
+const voice = () => $("voice").value;
+const rate = () => Number($("rate").value);
+
+/* ---------- storage (IndexedDB) ---------- */
+const dbp = new Promise((res, rej) => {
+  const r = indexedDB.open("ketabkhoon", 1);
+  r.onupgradeneeded = () => {
+    r.result.createObjectStore("books", {keyPath:"id"});
+    r.result.createObjectStore("texts", {keyPath:"id"});
+  };
+  r.onsuccess = () => res(r.result);
+  r.onerror = () => rej(r.error);
+});
+async function dbDo(storeName, mode, fn){
+  const db = await dbp;
+  return new Promise((res, rej) => {
+    const t = db.transaction(storeName, mode);
+    const req = fn(t.objectStore(storeName));
+    t.oncomplete = () => res(req ? req.result : undefined);
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error);
+  });
+}
+const dbAll = s => dbDo(s, "readonly", st => st.getAll());
+const dbGet = (s, id) => dbDo(s, "readonly", st => st.get(id));
+const dbPut = (s, v) => dbDo(s, "readwrite", st => st.put(v));
+const dbDel = (s, id) => dbDo(s, "readwrite", st => st.delete(id));
+
+/* ---------- engine warm-up (runs in background at start) ---------- */
+let warm = false, warmErr = null;
+function updateWarm(){
+  document.querySelectorAll(".warmNote").forEach(n => {
+    n.className = "note warmNote" + (warmErr ? " err" : "");
+    n.textContent = warmErr ? "آماده‌سازی صدا ناموفق بود: " + warmErr
+      : (warm ? "" : "در حال آماده‌سازی صدا… (بار اول چند ثانیه طول می‌کشد)");
+  });
+}
+window.__warmDone = () => { warm = true; warmErr = null; updateWarm(); };
+window.__warmFail = m => { warmErr = m; updateWarm(); };
+function startWarm(){ if(!A) return; warm = false; warmErr = null; updateWarm(); A.warmUp(voice()); }
+
+/* ---------- text splitting ---------- */
+function pushLong(s, out){
+  while(s.length > 240){
+    let cut = Math.max(s.lastIndexOf("،",220), s.lastIndexOf(",",220), s.lastIndexOf(" ",220));
+    if(cut < 80) cut = 220;
+    out.push(s.slice(0, cut+1).trim());
+    s = s.slice(cut+1).trim();
+  }
+  if(s) out.push(s);
+}
+function splitSentences(text){
+  const clean = text.replace(/\s+/g, " ").trim();
+  if(!clean) return [];
+  const parts = clean.match(/[^.!?؟۔…]+[.!?؟۔…]*/g) || [clean];
+  const out = [];
+  let buf = "";
+  for(let p of parts){
+    p = p.trim(); if(!p) continue;
+    buf = buf ? buf + " " + p : p;
+    if(buf.length >= 40){ pushLong(buf, out); buf = ""; }
+  }
+  if(buf){
+    if(out.length && buf.length < 20) out[out.length-1] += " " + buf;
+    else pushLong(buf, out);
+  }
+  return out;
+}
+
+/* ---------- library ---------- */
+let lib = [];
+async function loadLib(){
+  lib = (await dbAll("books")).sort((a,b) => (b.opened||0) - (a.opened||0));
+  renderLib();
+}
+function renderLib(){
+  const g = $("grid");
+  g.innerHTML = "";
+  $("empty").style.display = lib.length ? "none" : "flex";
+  g.style.display = lib.length ? "grid" : "none";
+  $("libCount").textContent = lib.length ? fa(lib.length) + " کتاب" : "";
+  lib.forEach(b => {
+    const card = document.createElement("div");
+    card.className = "book";
+    const pct = b.count > 1 ? Math.round(((b.idx||0) / (b.count-1)) * 100) : 0;
+    let cover;
+    if(b.cover){ cover = document.createElement("img"); cover.className = "cover"; cover.src = b.cover; cover.alt = ""; }
+    else{ cover = document.createElement("div"); cover.className = "coverph"; cover.textContent = b.name; }
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.innerHTML = '<div class="bt"></div><div class="bar"><i></i></div><div class="pct"></div>';
+    meta.querySelector(".bt").textContent = b.name;
+    meta.querySelector("i").style.width = pct + "%";
+    meta.querySelector(".pct").textContent = pct ? fa(pct) + "٪ خوانده شده" : fa(b.pages) + " صفحه";
+    const del = document.createElement("button");
+    del.className = "del"; del.setAttribute("aria-label", "حذف کتاب");
+    del.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+    del.addEventListener("click", e => { e.stopPropagation(); askDelete(b); });
+    card.append(cover, meta, del);
+    card.addEventListener("click", () => openBook(b.id));
+    g.appendChild(card);
+  });
+}
+
+let delTarget = null;
+function askDelete(b){ delTarget = b; $("delTitle").textContent = "حذف «" + b.name + "»؟"; openSheet("sheetDel"); }
+$("delNo").addEventListener("click", closeSheets);
+$("delOk").addEventListener("click", async () => {
+  if(!delTarget) return;
+  await dbDel("books", delTarget.id); await dbDel("texts", delTarget.id);
+  delTarget = null; closeSheets(); await loadLib(); toast("کتاب حذف شد.");
+});
+
+/* ---------- import ---------- */
+async function makeCover(pdf){
+  try{
+    const page = await pdf.getPage(1);
+    const v0 = page.getViewport({scale:1});
+    const vp = page.getViewport({scale: 300 / v0.width});
+    const c = document.createElement("canvas");
+    c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    await page.render({canvasContext: c.getContext("2d"), viewport: vp}).promise;
+    return c.toDataURL("image/jpeg", 0.7);
+  }catch(e){ return ""; }
+}
+async function importPdf(file){
+  showBusy("در حال باز کردن فایل…", 0);
+  try{
+    const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise;
+    const total = pdf.numPages, sents = [];
+    for(let n = 1; n <= total; n++){
+      showBusy("خواندن متن: صفحهٔ " + fa(n) + " از " + fa(total), n / total);
+      const page = await pdf.getPage(n);
+      const tc = await page.getTextContent();
+      const text = tc.items.map(i => i.str + (i.hasEOL ? " " : "")).join(" ");
+      splitSentences(text).forEach(t => sents.push({p:n, t}));
+      page.cleanup();
+    }
+    if(!sents.length){
+      hideBusy();
+      toast("متنی در این فایل پیدا نشد. احتمالاً اسکن‌شده (عکس) است.");
+      return;
+    }
+    showBusy("در حال ساخت جلد…", 1);
+    const cover = await makeCover(pdf);
+    const id = "b" + Date.now();
+    const meta = {id, name: file.name.replace(/\.pdf$/i, ""), pages: total, count: sents.length, cover, idx: 0, added: Date.now(), opened: Date.now()};
+    await dbPut("books", meta);
+    await dbPut("texts", {id, sentences: sents});
+    hideBusy();
+    await loadLib();
+    toast("کتاب به کتابخانه اضافه شد.");
+  }catch(e){
+    console.error(e);
+    hideBusy();
+    toast("باز کردن فایل ممکن نشد. فایل PDF دیگری را امتحان کنید.");
+  }
+}
+$("addBtn").addEventListener("click", () => $("file").click());
+$("file").addEventListener("change", e => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  if(f) importPdf(f);
+});
+
+/* ---------- reader state ---------- */
+let book = null, sents = [], idx = 0, playing = false, token = 0, curPage = -1;
+const pageFirst = {};
+
+function firstOfPage(p){ return pageFirst[p]; }
+function pageList(){ return Object.keys(pageFirst).map(Number).sort((a,b) => a-b); }
+
+async function openBook(id){
+  const meta = lib.find(b => b.id === id);
+  const t = await dbGet("texts", id);
+  if(!meta || !t){ toast("خواندن کتاب ممکن نشد."); return; }
+  book = meta; sents = t.sentences;
+  Object.keys(pageFirst).forEach(k => delete pageFirst[k]);
+  sents.forEach((s,i) => { if(!(s.p in pageFirst)) pageFirst[s.p] = i; });
+  idx = Math.max(0, Math.min(meta.idx || 0, sents.length - 1));
+  curPage = -1;
+  $("rTitle").textContent = meta.name;
+  $("seek").max = sents.length - 1;
+  $("pFrom").max = $("pTo").max = meta.pages;
+  $("pFrom").value = sents[idx].p; $("pTo").value = Math.min(meta.pages, sents[idx].p + 4);
+  meta.opened = Date.now();
+  go("read");
+  setIdx(idx, true);
+  if(A) prefetch(idx);
+}
+
+function renderPage(){
+  const p = sents[idx].p;
+  curPage = p;
+  const box = $("pageText");
+  box.innerHTML = "";
+  for(let i = pageFirst[p]; i < sents.length && sents[i].p === p; i++){
+    const sp = document.createElement("span");
+    sp.className = "s"; sp.dataset.i = i; sp.textContent = sents[i].t + " ";
+    sp.addEventListener("click", () => jump(i));
+    box.appendChild(sp);
+  }
+  $("textWrap").scrollTop = 0;
+}
+
+let saveTimer = null;
+function setIdx(i, force){
+  idx = Math.max(0, Math.min(sents.length - 1, i));
+  if(force || sents[idx].p !== curPage) renderPage();
+  const box = $("pageText");
+  const prev = box.querySelector(".s.on"); if(prev) prev.classList.remove("on");
+  const cur = box.querySelector('.s[data-i="' + idx + '"]');
+  if(cur){ cur.classList.add("on"); cur.scrollIntoView({block:"center", behavior:"smooth"}); }
+  $("seek").value = idx;
+  $("pg").textContent = "صفحهٔ " + fa(sents[idx].p) + " از " + fa(book.pages);
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveProgress, 700);
+}
+async function saveProgress(){
+  if(!book) return;
+  book.idx = idx;
+  try{ await dbPut("books", book); }catch(e){}
+}
+
+/* ---------- speech (offline voice inside the app) ---------- */
+const pending = new Map();
+let nid = 0;
+window.__ttsDone = (id, b64, sr) => { const p = pending.get(id); if(p){ pending.delete(id); p.res({b64, sr}); } };
+window.__ttsFail = (id, msg) => { const p = pending.get(id); if(p){ pending.delete(id); p.rej(new Error(msg)); } };
+function nativeSynth(text){
+  return new Promise((res, rej) => {
+    const id = ++nid;
+    pending.set(id, {res, rej});
+    A.synth(id, normalizeForSpeech(text), voice(), rate());
+  });
+}
+function pcmToWavUrl(b64, sr){
+  const bin = atob(b64), n = bin.length;
+  const buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+  const w = (o, s) => { for(let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
+  w(0,"RIFF"); v.setUint32(4, 36+n, true); w(8,"WAVE"); w(12,"fmt "); v.setUint32(16,16,true);
+  v.setUint16(20,1,true); v.setUint16(22,1,true); v.setUint32(24,sr,true); v.setUint32(28,sr*2,true);
+  v.setUint16(32,2,true); v.setUint16(34,16,true); w(36,"data"); v.setUint32(40,n,true);
+  const u8 = new Uint8Array(buf, 44);
+  for(let i=0;i<n;i++) u8[i] = bin.charCodeAt(i);
+  return URL.createObjectURL(new Blob([buf], {type:"audio/wav"}));
+}
+
+const GAP = 350;
+const audio = new Audio();
+const cache = new Map();
+function cacheKey(i){ return i + "|" + voice() + "|" + $("rate").value; }
+function getAudioUrl(i){
+  if(i >= sents.length) return Promise.resolve(null);
+  const k = cacheKey(i);
+  if(!cache.has(k)){
+    if(cache.size > 12){
+      const first = cache.keys().next().value;
+      cache.get(first).then(u => u && URL.revokeObjectURL(u)).catch(()=>{});
+      cache.delete(first);
+    }
+    const p = nativeSynth(sents[i].t)
+      .then(r => pcmToWavUrl(r.b64, r.sr))
+      .catch(e => { cache.delete(k); throw e; });
+    cache.set(k, p);
+  }
+  return cache.get(k);
+}
+function prefetch(from){ for(let k = 0; k < 3; k++) getAudioUrl(from + k).catch(()=>{}); }
+function clearCache(){
+  cache.forEach(p => p.then(u => u && URL.revokeObjectURL(u)).catch(()=>{}));
+  cache.clear();
+}
+
+function setPlayUi(on, wait){
+  $("play").classList.toggle("on", on);
+  $("play").classList.toggle("wait", !!wait);
+  $("rHint").textContent = wait ? "در حال آماده‌سازی صدا…" : "";
+}
+async function speak(){
+  const my = ++token;
+  setIdx(idx);
+  setPlayUi(true, true);
+  try{
+    const url = await getAudioUrl(idx);
+    if(my !== token) return;
+    setPlayUi(true, false);
+    audio.onended = () => {
+      if(my !== token || !playing) return;
+      if(idx + 1 >= sents.length){ stopSpeech(); toast("به پایان کتاب رسیدید."); return; }
+      setTimeout(() => { if(my === token && playing){ setIdx(idx + 1); speak(); } }, GAP);
+    };
+    audio.src = url;
+    await audio.play();
+    prefetch(idx + 1);
+  }catch(e){
+    if(my === token){ stopSpeech(); toast("خواندن شروع نشد: " + e.message); }
+  }
+}
+function stopSpeech(){
+  playing = false; token++;
+  audio.pause();
+  setPlayUi(false, false);
+  saveProgress();
+}
+function jump(i){
+  setIdx(i);
+  if(playing) speak(); else if(A) prefetch(idx);
+}
+$("play").addEventListener("click", () => {
+  if(!book) return;
+  if(!A){ toast("این صفحه باید داخل برنامهٔ اندروید اجرا شود."); return; }
+  if(playing) stopSpeech(); else { playing = true; speak(); }
+});
+$("sNext").addEventListener("click", () => jump(idx + 1));
+$("sPrev").addEventListener("click", () => jump(idx - 1));
+$("pNext").addEventListener("click", () => {
+  const pages = pageList(), at = pages.indexOf(sents[idx].p);
+  if(at < pages.length - 1) jump(firstOfPage(pages[at + 1]));
+});
+$("pPrev").addEventListener("click", () => {
+  const pages = pageList(), p = sents[idx].p, at = pages.indexOf(p);
+  if(idx > firstOfPage(p)) jump(firstOfPage(p));
+  else if(at > 0) jump(firstOfPage(pages[at - 1]));
+});
+$("seek").addEventListener("input", e => {
+  const i = Number(e.target.value);
+  $("pg").textContent = "صفحهٔ " + fa(sents[i].p) + " از " + fa(book.pages);
+});
+$("seek").addEventListener("change", e => jump(Number(e.target.value)));
+
+function leaveReader(){
+  stopSpeech();
+  clearCache();
+  go("lib");
+  loadLib();
+}
+$("backBtn").addEventListener("click", leaveReader);
+window.__onBack = () => {
+  if(sheetOpen()){ closeSheets(); return true; }
+  if(view === "read"){ leaveReader(); return true; }
+  if(view !== "lib"){ go("lib"); return true; }
+  return false;
+};
+
+/* ---------- settings sheet ---------- */
+$("setBtn").addEventListener("click", () => openSettings());
+$("closeSet").addEventListener("click", closeSheets);
+$("rate").addEventListener("input", e => { $("rateVal").textContent = e.target.value; });
+$("rate").addEventListener("change", e => {
+  store.set("rate", e.target.value);
+  clearCache();
+  if(playing) speak(); else if(book && A) prefetch(idx);
+});
+$("fs").addEventListener("input", () => { applyFs(); store.set("fs", $("fs").value); });
+$("voice").addEventListener("change", () => {
+  store.set("voice", voice());
+  clearCache(); startWarm();
+  if(playing) speak(); else if(book && A) prefetch(idx);
+});
+
+/* ---------- audio file builder ---------- */
+let lastName = null;
+$("openBuild").addEventListener("click", () => { closeSheets(); openSheet("sheetBuild"); });
+$("closeBuild").addEventListener("click", closeSheets);
+function bnote(m, err){ const n = $("buildNote"); n.textContent = m; n.className = "note" + (err ? " err" : ""); }
+window.__buildProgress = (d, t) => bnote("در حال ساخت: " + fa(d) + " از " + fa(t) + " جمله…");
+window.__buildDone = name => {
+  lastName = name;
+  const p = $("player");
+  p.src = "https://appassets.androidplatform.net/exports/" + name; p.hidden = false;
+  $("save").disabled = false; $("share").disabled = false;
+  $("build").disabled = false; $("cancelBuild").disabled = true;
+  bnote("فایل آماده شد. می‌توانید گوش دهید، ذخیره کنید یا بفرستید.");
+};
+window.__buildFail = msg => {
+  $("build").disabled = false; $("cancelBuild").disabled = true;
+  if(msg === "stopped") bnote("ساخت فایل متوقف شد.");
+  else bnote("ساخت فایل کامل نشد: " + msg, true);
+};
+window.__fileMsg = (m, err) => bnote(m, err);
+
+$("build").addEventListener("click", () => {
+  if(!A || !book) return;
+  const from = Math.max(1, Number($("pFrom").value) || 1);
+  const to = Math.min(book.pages, Number($("pTo").value) || from);
+  const items = sents.filter(s => s.p >= from && s.p <= to).map(s => normalizeForSpeech(s.t));
+  if(!items.length){ bnote("در این بازهٔ صفحه متنی نیست.", true); return; }
+  stopSpeech();
+  $("build").disabled = true; $("cancelBuild").disabled = false;
+  $("save").disabled = true; $("share").disabled = true;
+  bnote("در حال شروع…");
+  A.buildAudio("ketabkhoon-" + Date.now() + ".wav", JSON.stringify(items), voice(), rate());
+});
+$("cancelBuild").addEventListener("click", () => { if(A) A.cancelBuild(); });
+$("save").addEventListener("click", () => { if(A && lastName) A.saveToDownloads(lastName); });
+$("share").addEventListener("click", () => { if(A && lastName) A.shareFile(lastName); });
+
+
+/* ---------- speech text preparation (makes reading more natural) ---------- */
+const ONES = ["صفر","یک","دو","سه","چهار","پنج","شش","هفت","هشت","نه","ده","یازده","دوازده","سیزده","چهارده","پانزده","شانزده","هفده","هجده","نوزده"];
+const TENS = ["","","بیست","سی","چهل","پنجاه","شصت","هفتاد","هشتاد","نود"];
+const HUND = ["","صد","دویست","سیصد","چهارصد","پانصد","ششصد","هفتصد","هشتصد","نهصد"];
+const SCALE = ["","هزار","میلیون","میلیارد"];
+function below1000(n){
+  const parts = [];
+  const h = Math.floor(n / 100), r = n % 100;
+  if(h) parts.push(HUND[h]);
+  if(r){
+    if(r < 20) parts.push(ONES[r]);
+    else { const t = Math.floor(r / 10), o = r % 10; parts.push(TENS[t] + (o ? " و " + ONES[o] : "")); }
+  }
+  return parts.join(" و ");
+}
+function numToWords(str){
+  if(str.length > 12) return str;
+  let n = parseInt(str, 10);
+  if(isNaN(n)) return str;
+  if(n === 0) return "صفر";
+  const groups = [];
+  let i = 0;
+  while(n > 0){
+    const g = n % 1000; n = Math.floor(n / 1000);
+    if(g){
+      let w = below1000(g);
+      if(i === 1 && g === 1) w = "";
+      groups.unshift((w + " " + SCALE[i]).trim());
+    }
+    i++;
+  }
+  return groups.join(" و ");
+}
+function normalizeForSpeech(text){
+  let t = text;
+  t = t.replace(/[۰-۹]/g, d => String(d.charCodeAt(0) - 1776));
+  t = t.replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 1632));
+  t = t.replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/ـ/g, "");
+  t = t.replace(/(\d+)[.٫,](\d+)/g, (m, a, b) => numToWords(a) + " ممیز " + numToWords(b));
+  t = t.replace(/\d+/g, m => numToWords(m));
+  t = t.replace(/[٪%]/g, " درصد ");
+  t = t.replace(/[()\[\]{}«»"“”]/g, " ");
+  t = t.replace(/\s*[—–]\s*/g, "، ");
+  t = t.replace(/\s+/g, " ").trim();
+  return t || text;
+}
+
+/* ---------- app info (edit these values) ---------- */
+const CONFIG = {
+  appName: "کتابخون",
+  version: "1.2",
+  developer: "",
+  email: "",
+  storeUrl: "",
+  about: "کتابخون به شما کمک می‌کند کتاب‌ها و مقاله‌های PDF خود را با صدای فارسی و بدون نیاز به اینترنت گوش کنید."
+};
+
+/* ---------- theme ---------- */
+function applyTheme(){
+  const t = store.get("theme", "auto");
+  if(t === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", t);
+}
+$("theme").value = store.get("theme", "auto");
+applyTheme();
+$("theme").addEventListener("change", () => { store.set("theme", $("theme").value); applyTheme(); });
+
+function openSettings(){
+  $("openBuild").style.display = (view === "read" && book) ? "" : "none";
+  openSheet("sheetSet");
+}
+
+/* ---------- listening statistics (kept on the phone) ---------- */
+function dayKey(off){
+  const d = new Date(); d.setDate(d.getDate() + off);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function getStats(){
+  try{ const s = JSON.parse(store.get("stats", "")); if(s && s.days) return s; }catch(e){}
+  return {total: 0, days: {}};
+}
+function addListen(sec){
+  const s = getStats(), k = dayKey(0);
+  s.total += sec; s.days[k] = (s.days[k] || 0) + sec;
+  const keys = Object.keys(s.days).sort();
+  while(keys.length > 60) delete s.days[keys.shift()];
+  store.set("stats", JSON.stringify(s));
+}
+function streakDays(s){
+  let c = 0;
+  for(let i = 0; i > -400; i--){
+    if((s.days[dayKey(i)] || 0) >= 60) c++;
+    else if(i !== 0) break;
+  }
+  return c;
+}
+let lastT = 0, statBuf = 0;
+audio.addEventListener("loadstart", () => { lastT = 0; });
+audio.addEventListener("timeupdate", () => {
+  const t = audio.currentTime, d = t - lastT;
+  lastT = t;
+  if(d > 0 && d < 1.5){ statBuf += d; if(statBuf >= 5){ addListen(statBuf); statBuf = 0; } }
+});
+function renderMe(){
+  const s = getStats();
+  $("stBooks").textContent = fa(lib.length);
+  $("stTotal").textContent = fa(Math.round(s.total / 60));
+  $("stToday").textContent = fa(Math.round((s.days[dayKey(0)] || 0) / 60));
+  $("stStreak").textContent = fa(streakDays(s));
+  const chart = $("chart"); chart.innerHTML = "";
+  const vals = [];
+  for(let i = 6; i >= 0; i--) vals.push({k: dayKey(-i), v: s.days[dayKey(-i)] || 0, off: -i});
+  const max = Math.max(60, ...vals.map(x => x.v));
+  vals.forEach(x => {
+    const col = document.createElement("div"); col.className = "col";
+    const bar = document.createElement("i"); bar.style.height = Math.max(3, Math.round(x.v / max * 85)) + "%";
+    const lab = document.createElement("em");
+    const d = new Date(); d.setDate(d.getDate() + x.off);
+    lab.textContent = d.toLocaleDateString("fa", {weekday: "short"});
+    col.append(bar, lab); chart.appendChild(col);
+  });
+  const cur = lib.find(b => (b.idx || 0) > 0) || lib[0];
+  $("contCard").style.display = cur ? "block" : "none";
+  if(cur){
+    $("contTitle").textContent = cur.name;
+    const pct = cur.count > 1 ? Math.round(((cur.idx || 0) / (cur.count - 1)) * 100) : 0;
+    $("contBar").style.width = pct + "%";
+    $("contPct").textContent = fa(pct) + "٪ خوانده شده";
+    const box = $("contCover"); box.innerHTML = "";
+    let c;
+    if(cur.cover){ c = document.createElement("img"); c.src = cur.cover; c.alt = ""; c.style.aspectRatio = "3/4"; }
+    else{ c = document.createElement("div"); c.className = "coverph"; c.textContent = cur.name; }
+    box.appendChild(c);
+    $("contGo").onclick = () => openBook(cur.id);
+  }
+}
+
+/* ---------- tabs and "more" ---------- */
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => go(t.dataset.v)));
+function openWeb(url){ if(A) A.openUrl(url); else window.open(url, "_blank"); }
+function googleSearch(q){ openWeb("https://www.google.com/search?q=" + encodeURIComponent(q)); }
+
+$("mSet").addEventListener("click", openSettings);
+$("mFind").addEventListener("click", () => openSheet("sheetFind"));
+$("mFeed").addEventListener("click", () => { $("fbRate").style.display = CONFIG.storeUrl ? "" : "none"; renderStars(); openSheet("sheetFeed"); });
+$("mShare").addEventListener("click", () => {
+  const link = CONFIG.storeUrl ? "\n" + CONFIG.storeUrl : "";
+  const msg = CONFIG.appName + ": کتاب‌ها و مقاله‌های PDF خود را با صدای فارسی گوش کنید، بدون نیاز به اینترنت." + link;
+  if(A) A.shareText(msg); else toast("این بخش داخل برنامهٔ اندروید کار می‌کند.");
+});
+$("mAbout").addEventListener("click", () => {
+  $("abName").textContent = CONFIG.appName;
+  $("abVer").textContent = "نسخهٔ " + CONFIG.version;
+  $("abText").textContent = CONFIG.about;
+  $("abDev").textContent = CONFIG.developer ? "توسعه‌دهنده: " + CONFIG.developer : "";
+  $("abMail").textContent = CONFIG.email ? "ارتباط با ما: " + CONFIG.email : "";
+  openSheet("sheetAbout");
+});
+["closeFind","closeFeed","closeAbout"].forEach(id => $(id).addEventListener("click", closeSheets));
+
+/* search + suggested books */
+const BOOKS = [
+  {t:"مرد در جستجوی معنا", a:"ویکتور فرانکل", d:"خاطرات فرانکل از اردوگاه‌های کار اجباری و پایه‌های «معنادرمانی»."},
+  {t:"هنر عشق ورزیدن", a:"اریک فروم", d:"عشق را به‌عنوان هنری که باید آموخت و تمرین کرد بررسی می‌کند."},
+  {t:"گریز از آزادی", a:"اریک فروم", d:"دربارهٔ اینکه چرا انسان‌ها گاهی از آزادی می‌گریزند."},
+  {t:"تفکر، سریع و کند", a:"دانیل کانمن", d:"دو شیوهٔ تفکر شهودی و تحلیلی و خطاهای رایج قضاوت را توضیح می‌دهد."},
+  {t:"جنایت و مکافات", a:"فئودور داستایفسکی", d:"دانشجویی فقیر در سن‌پترزبورگ مرتکب قتل می‌شود و با عذاب وجدان روبه‌رو می‌شود."},
+  {t:"بوف کور", a:"صادق هدایت", d:"رمانی روان‌شناختی و کابوس‌وار، از مهم‌ترین آثار ادبیات مدرن فارسی."},
+  {t:"سووشون", a:"سیمین دانشور", d:"روایت زندگی زنی در شیراز سال‌های جنگ جهانی دوم."},
+  {t:"کیمیاگر", a:"پائولو کوئیلو", d:"چوپانی اندلسی به‌دنبال گنج و «افسانهٔ شخصی» خود سفر می‌کند."},
+  {t:"شازده کوچولو", a:"آنتوان دو سنت‌اگزوپری", d:"داستانی فلسفی دربارهٔ دوستی، عشق و نگاه بزرگ‌سالان به زندگی."},
+  {t:"مثنوی معنوی", a:"مولانا", d:"مجموعه‌ای از حکایت‌ها و آموزه‌های عرفانی به شعر."}
+];
+(function(){
+  const box = $("sugg");
+  BOOKS.forEach(b => {
+    const el = document.createElement("div"); el.className = "sugg";
+    el.innerHTML = "<b></b><small></small><p></p>";
+    el.querySelector("b").textContent = b.t;
+    el.querySelector("small").textContent = b.a;
+    el.querySelector("p").textContent = b.d;
+    const btn = document.createElement("button"); btn.className = "btn"; btn.textContent = "مقاله و نقد در Google";
+    btn.addEventListener("click", () => googleSearch(b.t + " " + b.a + " نقد و بررسی"));
+    el.appendChild(btn); box.appendChild(el);
+  });
+})();
+$("qGo").addEventListener("click", () => {
+  const q = $("q").value.trim();
+  if(!q){ toast("عبارت جستجو را بنویسید."); return; }
+  googleSearch(q + " مقاله");
+});
+
+/* feedback */
+let rating = 0;
+function renderStars(){
+  const box = $("stars"); box.innerHTML = "";
+  for(let i = 1; i <= 5; i++){
+    const b = document.createElement("button");
+    b.className = "star" + (i <= rating ? " on" : "");
+    b.textContent = "★"; b.setAttribute("aria-label", fa(i) + " ستاره");
+    b.addEventListener("click", () => { rating = i; renderStars(); });
+    box.appendChild(b);
+  }
+}
+$("fbSend").addEventListener("click", () => {
+  if(!CONFIG.email){ toast("ایمیل پشتیبانی هنوز تنظیم نشده است."); return; }
+  const body = (rating ? "امتیاز: " + rating + " از ۵\n\n" : "") + $("fbText").value;
+  if(A) A.sendEmail(CONFIG.email, "نظر دربارهٔ " + CONFIG.appName, body);
+  closeSheets();
+});
+$("fbRate").addEventListener("click", () => { if(CONFIG.storeUrl) openWeb(CONFIG.storeUrl); });
+
+/* ---------- start ---------- */
+loadLib();
+startWarm();
+if(!A) toast("این صفحه باید داخل برنامهٔ اندروید باز شود.");
+</script>
+</body>
+</html>
